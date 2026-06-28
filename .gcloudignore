@@ -30,3 +30,11 @@ build/
 
 # Exclude log files
 *.log
+
+# Exclude other unrelated workspace directories
+tania_production/
+waterfall-content-os/
+archive/
+results/
+output/
+logs/
