@@ -59,13 +59,16 @@ class BacklinkAnalyzer:
     def _init_google_search_client(self):
         """Initialize Google Custom Search client for lightweight domain mention estimates."""
         try:
-            from src.api.google_search_client import GoogleSearchClient
+            try:
+                from src.apis.google_custom_search import GoogleCustomSearchAPI
+            except ImportError:
+                from apis.google_custom_search import GoogleCustomSearchAPI
 
             logger.info("Google Search: Initializing Google Custom Search client")
 
             class GoogleSearchAdapter:
                 def __init__(self, api_key: str, search_engine_id: str):
-                    self.api = GoogleSearchClient(api_key=api_key, search_engine_id=search_engine_id)
+                    self.api = GoogleCustomSearchAPI(api_key=api_key, search_engine_id=search_engine_id)
 
                 def get_backlink_proxy(self, domain: str) -> Dict[str, Any]:
                     query = f'"{domain}" -site:{domain}'
