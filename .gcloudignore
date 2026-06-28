@@ -1,0 +1,32 @@
+# Exclude git repository
+.git/
+.gitignore
+
+# Exclude virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Exclude local environment configs
+.env.local
+.env.docker
+
+# Exclude Python cache and build files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Exclude IDE settings
+.vscode/
+.idea/
+
+# Exclude log files
+*.log
