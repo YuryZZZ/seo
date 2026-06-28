@@ -106,7 +106,15 @@ class SEOGEOOrchestrator:
         keyword_researcher = KeywordResearcher(config=self.api_keys)
         serp_analyzer = SERPAnalyzer() if SERPAnalyzer else None
         entity_extractor = EntityExtractor() if EntityExtractor else None
-        copywriter = MasterCopywriter() if MasterCopywriter else None
+        if MasterCopywriter:
+            try:
+                from .llm_client import LLMClient
+            except ImportError:
+                from llm_client import LLMClient
+            llm_client = LLMClient(provider="google", model="gemini-2.5-flash")
+            copywriter = MasterCopywriter(config=self.api_keys, llm_client=llm_client)
+        else:
+            copywriter = None
         ia_architect = IAArchitect() if IAArchitect else None
         competitor_analyzer = CompetitorAnalyzer(config=self.api_keys) if CompetitorAnalyzer else None
         schema_generator = SchemaEngineer if SchemaEngineer else None  # class-level usage
@@ -807,6 +815,72 @@ class SEOGEOOrchestrator:
         """Check if topic is about costs and contracts."""
         joined = " ".join([seed_keyword] + list(keywords)).lower()
         return "cost" in joined and "contract" in joined
+
+    def execute_pipeline(self, payload: Any, *args, **kwargs) -> Any:
+        """Alias for execute_full_pipeline to maintain compatibility with test suites."""
+        return self.run_pipeline(payload)
+
+    def _run_sync_phase(self, phase: int, data: Any) -> Any:
+        is_payload = False
+        if hasattr(data, "to_dict"):
+            is_payload = True
+            dict_data = data.to_dict()
+        elif isinstance(data, dict):
+            dict_data = data
+        else:
+            dict_data = {}
+
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        if loop.is_running():
+            import nest_asyncio
+            nest_asyncio.apply()
+        
+        result_dict = loop.run_until_complete(self.execute_phase(phase, dict_data))
+
+        if is_payload:
+            for k, v in result_dict.items():
+                if hasattr(data, k):
+                    try:
+                        setattr(data, k, v)
+                    except Exception:
+                        pass
+            return data
+        return result_dict
+
+    def run_phase_0(self, data: Any = None) -> Any:
+        return self._run_sync_phase(0, data)
+
+    def run_phase_1(self, data: Any = None) -> Any:
+        return self._run_sync_phase(1, data)
+
+    def run_phase_2(self, data: Any = None) -> Any:
+        return self._run_sync_phase(2, data)
+
+    def run_phase_3(self, data: Any = None) -> Any:
+        return self._run_sync_phase(3, data)
+
+    def run_phase_4(self, data: Any = None) -> Any:
+        return self._run_sync_phase(4, data)
+
+    def run_phase_5(self, data: Any = None) -> Any:
+        return self._run_sync_phase(5, data)
+
+    def run_phase_6(self, data: Any = None) -> Any:
+        return self._run_sync_phase(6, data)
+
+    def run_phase_7(self, data: Any = None) -> Any:
+        return self._run_sync_phase(7, data)
+
+    def run_phase_8(self, data: Any = None) -> Any:
+        return self._run_sync_phase(8, data)
+
+    def run_phase_9(self, data: Any = None) -> Any:
+        return self._run_sync_phase(9, data)
 
 
 async def main():
