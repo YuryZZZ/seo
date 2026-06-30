@@ -18,6 +18,11 @@ try:
 except ImportError:  # pragma: no cover
     from content_utils import slugify
 
+try:
+    from .cache import cache
+except ImportError:
+    from cache import cache
+
 
 @dataclass
 class KeywordResult:
@@ -141,7 +146,7 @@ class KeywordResearcher:
 
     def __init__(self, enable_live: bool = True, repo_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None):
         self.enable_live = enable_live
-        self.repo_root = repo_root or Path(__file__).resolve().parents[1]
+        self.repo_root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[1]
         self.config = config or {}
         # Paid SEO scrapers are intentionally disabled in this project mode.
         self.google_api_key = self.config.get("google_api_key") or os.getenv("GOOGLE_API_KEY")
@@ -170,6 +175,11 @@ class KeywordResearcher:
         ]
 
     def research_keywords(self, seed_keyword: str, limit: int = 30) -> Dict[str, Any]:
+        cache_key = f"keyword_research:{seed_keyword}:{limit}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         keyword_rows = self._build_keyword_rows(
             seed_keyword=seed_keyword,
             target_count=max(limit, 10),
@@ -210,7 +220,7 @@ class KeywordResearcher:
             for intent, rows in clustered.items()
         }
 
-        return {
+        result = {
             "seed_keyword": seed_keyword,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "total_keywords": len(keyword_rows),
@@ -219,6 +229,8 @@ class KeywordResearcher:
             "ddg_enriched": len(ddg_keywords),
             "google_enriched": len(google_keywords),
         }
+        cache.set(cache_key, result)
+        return result
 
     def _enrich_with_ddg(self, seed_keyword: str) -> List[str]:
         """Discover real related keywords from DuckDuckGo search results."""
@@ -1580,7 +1592,8 @@ class KeywordResearcher:
         return sum(v - 1 for v in counts.values() if v > 1)
 
     def _scan_repository_terms(self, max_repository_terms: int) -> Tuple[List[str], Dict[str, Any]]:
-        cached = self._repository_scan_cache.get(max_repository_terms)
+        cache_key = f"repo_scan_terms:{max_repository_terms}"
+        cached = cache.get(cache_key)
         if cached is not None:
             terms, inventory = cached
             cached_inventory = dict(inventory)
@@ -1636,6 +1649,7 @@ class KeywordResearcher:
             "max_repository_terms": max_repository_terms,
             "cache_hit": False,
         }
+        cache.set(cache_key, (list(top_terms), dict(inventory)))
         self._repository_scan_cache[max_repository_terms] = (list(top_terms), dict(inventory))
         return top_terms, inventory
 
