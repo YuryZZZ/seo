@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO/GEO API Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { border-bottom: 2px solid #0070f3; padding-bottom: 10px; }
+        .status-card { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+        .success { color: #2e7d32; font-weight: bold; }
+        .error { color: #d32f2f; font-weight: bold; }
+        .btn { display: inline-block; background: #0070f3; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
+        .btn:hover { background: #005bb5; }
+        #metrics { display: flex; gap: 15px; flex-wrap: wrap; }
+        .metric-box { flex: 1; min-width: 200px; background: #e3f2fd; padding: 15px; border-radius: 5px; text-align: center; border: 1px solid #bbdefb; }
+        .metric-value { font-size: 24px; font-weight: bold; margin: 10px 0; color: #1565c0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SEO/GEO API Dashboard</h1>
+        
+        <div class="status-card">
+            <h3>API Status: <span id="api-status">Checking...</span></h3>
+            <button class="btn" onclick="checkStatus()">Refresh Status</button>
+        </div>
+        
+        <h3>Performance Profile</h3>
+        <div id="metrics">
+            <div class="metric-box">
+                <div>CPU Usage</div>
+                <div class="metric-value" id="cpu-val">- %</div>
+            </div>
+            <div class="metric-box">
+                <div>Memory RSS</div>
+                <div class="metric-value" id="mem-val">- MB</div>
+            </div>
+            <div class="metric-box">
+                <div>Active Threads</div>
+                <div class="metric-value" id="thread-val">-</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            document.getElementById('api-status').innerHTML = "Checking...";
+            document.getElementById('api-status').className = "";
+            
+            try {
+                // Check health
+                const res = await fetch('/health');
+                if (res.ok) {
+                    document.getElementById('api-status').innerHTML = "Online";
+                    document.getElementById('api-status').className = "success";
+                } else {
+                    throw new Error("Not OK");
+                }
+                
+                // Fetch profile
+                const profRes = await fetch('/api/v1/profile');
+                if (profRes.ok) {
+                    const profData = await profRes.json();
+                    document.getElementById('cpu-val').innerText = profData.cpu_percent + " %";
+                    document.getElementById('mem-val').innerText = profData.memory_rss_mb.toFixed(2) + " MB";
+                    document.getElementById('thread-val').innerText = profData.threads;
+                }
+            } catch (err) {
+                document.getElementById('api-status').innerHTML = "Offline / Error";
+                document.getElementById('api-status').className = "error";
+                console.error(err);
+            }
+        }
+        
+        // Initial load
+        window.onload = checkStatus;
+    </script>
+</body>
+</html>
