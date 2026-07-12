@@ -173,7 +173,8 @@ class TestDetectLanguage:
     """Test language detection."""
 
     def test_english_default(self):
-        assert detect_language("Hello world") == "en"
+        # Use a longer English sentence for reliable langdetect detection
+        assert detect_language("This is a comprehensive English sentence with multiple words for reliable detection") == "en"
 
     def test_empty_string(self):
         assert detect_language("") == "en"
