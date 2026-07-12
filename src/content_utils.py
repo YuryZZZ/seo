@@ -225,6 +225,59 @@ def suggest_canonical_url(title: str, base_url: str = "") -> str:
     return f"/{slug}"
 
 
+def generate_meta_description(html_content: str, max_length: int = 160) -> str:
+    """Auto-generate a meta description from HTML content.
+    
+    Extracts the first readable paragraph, removes HTML tags, and truncates
+    to the recommended SEO length (usually 155-160 characters) without
+    cutting off words in the middle.
+    
+    Args:
+        html_content: Raw HTML content
+        max_length: Maximum allowed length for the description
+        
+    Returns:
+        A clean meta description string
+    """
+    if not html_content:
+        return ""
+        
+    # Extract paragraphs
+    paragraphs = re.findall(r'<p[^>]*>(.*?)</p>', html_content, re.DOTALL | re.IGNORECASE)
+    
+    text = ""
+    for p in paragraphs:
+        # Strip HTML and normalize whitespace
+        clean_p = html_to_text(p).strip()
+        if clean_p and len(clean_p) > 20:  # Skip very short paragraphs or empty ones
+            text = clean_p
+            break
+            
+    if not text:
+        # Fallback if no <p> tags with sufficient content exist
+        text = html_to_text(html_content).strip()
+        
+    if len(text) <= max_length:
+        return text
+        
+    # Truncate to max_length
+    truncated = text[:max_length].strip()
+    
+    # Try to cut at the last space to avoid breaking words
+    last_space = truncated.rfind(' ')
+    if last_space > 0:
+        truncated = truncated[:last_space]
+        
+    # Add ellipsis if we actually truncated the word
+    if not text.startswith(truncated) or len(text) > len(truncated):
+        # Only add ellipsis if it doesn't already end with punctuation
+        if truncated and truncated[-1] not in ['.', '!', '?']:
+            truncated += "..."
+            
+    return truncated
+
+
+
 def estimate_content_quality_score(text: str) -> Dict[str, Any]:
     """Estimate a content quality score based on multiple signals.
     
