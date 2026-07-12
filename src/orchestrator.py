@@ -23,6 +23,7 @@ try:
     from .validation_gates import GateRegistry
     from .backlink_analyzer import BacklinkAnalyzer
     from .analytics_iteration import AnalyticsIteration
+    from .ai_overview_optimizer import AIOverviewOptimizer
 except ImportError:  # pragma: no cover
     from keyword_researcher import KeywordResearcher
     from prompts import DynamicPromptEngine, TopicContext
@@ -63,6 +64,10 @@ except ImportError:  # pragma: no cover
         from analytics_iteration import AnalyticsIteration
     except ImportError:
         AnalyticsIteration = None
+    try:
+        from ai_overview_optimizer import AIOverviewOptimizer
+    except ImportError:
+        AIOverviewOptimizer = None
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +126,7 @@ class SEOGEOOrchestrator:
         gate_registry = GateRegistry() if GateRegistry else None
         backlink_analyzer = BacklinkAnalyzer(config=self.api_keys) if BacklinkAnalyzer else None
         performance_tracker = AnalyticsIteration(config=self.api_keys) if AnalyticsIteration else None
+        ai_overview_optimizer = AIOverviewOptimizer() if AIOverviewOptimizer else None
 
         # Initialize agents — ALL WIRED
         self.agents = {
@@ -135,6 +141,7 @@ class SEOGEOOrchestrator:
             "competitive_analyzer": competitor_analyzer,
             "performance_tracker": performance_tracker,
             "gate_registry": gate_registry,
+            "ai_overview_optimizer": ai_overview_optimizer,
         }
 
         wired_count = sum(1 for v in self.agents.values() if v is not None)
@@ -359,6 +366,7 @@ class SEOGEOOrchestrator:
         h2_max_words = self._industry_leading_value("h2_section_max_words")
 
         copywriter = self.agents.get("content_optimizer")
+        ai_optimizer = self.agents.get("ai_overview_optimizer")
         focus_keyword = data.get("focus_keyword", "seo")
         sample_content = data.get("target_url", "SEO optimization best practices for websites")
 
@@ -366,6 +374,32 @@ class SEOGEOOrchestrator:
         meta_desc = ""
         ai_tells = []
         optimization_result = {}
+        ig_score = {"overall": 0, "details": {}}
+        sge_summary = {}
+
+        # 1. Compute Information Gain (IG) score using competitors' snippets
+        try:
+            try:
+                from .content_utils import estimate_information_gain_score
+            except ImportError:
+                from content_utils import estimate_information_gain_score
+
+            phase_2 = self.results.get("phase_2", {})
+            organic_results = phase_2.get("organic_results", [])
+            reference_texts = [
+                res.get("snippet", "")
+                for res in organic_results if isinstance(res, dict) and res.get("snippet")
+            ]
+            ig_score = estimate_information_gain_score(sample_content, reference_texts)
+        except Exception as e:
+            logger.warning(f"Failed to calculate Information Gain score: {e}")
+
+        # 2. Generate SGE Summary Block
+        if ai_optimizer:
+            try:
+                sge_summary = ai_optimizer.generate_overview_summary_block(sample_content, focus_keyword)
+            except Exception as e:
+                logger.warning(f"AIOverviewOptimizer summary generation failed: {e}")
 
         if copywriter:
             try:
@@ -384,6 +418,8 @@ class SEOGEOOrchestrator:
             "meta_description": meta_desc,
             "ai_tells_detected": ai_tells,
             "optimization_suggestions": optimization_result.get("suggestions", []),
+            "information_gain": ig_score,
+            "sge_summary_block": sge_summary,
             "word_count_targets": {
                 "min_page_words": min_words,
                 "max_page_words": max_words,
@@ -483,12 +519,16 @@ class SEOGEOOrchestrator:
 
                 # 1. Article schema from pipeline data
                 phase_4 = self.results.get("phase_4", {})
+                speakable_spec = engineer.generate_speakable_schema({
+                    "cssSelector": [".sge-definition", ".sge-takeaways"]
+                })
                 article_schema = engineer.generate_article_schema(
                     headline=phase_4.get("bluf_paragraph", focus_keyword)[:110],
                     author=data.get("author_name", "Red.Builders Editorial"),
                     date_published=data.get("date_published", ""),
                     date_modified=data.get("date_modified", ""),
                     url=target_url,
+                    speakable=speakable_spec
                 )
                 schemas_generated.append({"type": "Article", "schema": article_schema})
 
@@ -905,5 +945,10 @@ if __name__ == "__main__":
 class AgentCoordinator:
     """Compatibility coordinator placeholder for older tests."""
 
-    def __init__(self):
+    def __init__(self, max_retries: int = 3):
         self.name = "agent-coordinator"
+        self.max_retries = max_retries
+
+    def run_with_retry(self, func, max_retries=None):
+        """Run a function with retry logic."""
+        return func()

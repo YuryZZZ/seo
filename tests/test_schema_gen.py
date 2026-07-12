@@ -169,3 +169,25 @@ class TestSchemaGraph:
         assert graph["@context"] == "https://schema.org"
         assert "@graph" in graph
         assert len(graph["@graph"]) == 2
+
+class TestSpeakableSchema:
+    """Test SpeakableSpecification schema generation and integration."""
+    
+    def test_speakable_generation(self):
+        schema = SchemaGenerator.generate_speakable_schema({
+            "cssSelector": [".sge-definition", ".sge-takeaways"],
+            "xpath": ["/html/head/title"]
+        })
+        assert schema["@type"] == "SpeakableSpecification"
+        assert schema["cssSelector"] == [".sge-definition", ".sge-takeaways"]
+        
+    def test_speakable_in_article(self):
+        speakable_spec = SchemaGenerator.generate_speakable_schema({"cssSelector": [".sge-definition"]})
+        schema = SchemaGenerator.generate_article_schema(
+            headline="Test Title",
+            speakable=speakable_spec
+        )
+        assert "speakable" in schema
+        assert schema["speakable"]["@type"] == "SpeakableSpecification"
+        assert schema["speakable"]["cssSelector"] == [".sge-definition"]
+

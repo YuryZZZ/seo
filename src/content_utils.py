@@ -372,3 +372,130 @@ def calculate_keyword_density(text: str, top_n: int = 10, stop_words: Optional[L
         })
         
     return results
+
+def estimate_information_gain_score(text: str, reference_texts: List[str]) -> Dict[str, Any]:
+    """
+    Estimate the Information Gain (IG) score of a text compared to a set of reference texts.
+    Information Gain measures the uniqueness and value delta of the content.
+    """
+    if not text:
+        return {"overall": 0, "details": {}}
+    
+    if not reference_texts:
+        reference_texts = []
+        
+    def get_ngrams(t: str, n: int) -> set:
+        txt = html_to_text(t).lower()
+        words = re.findall(r'\b[a-z]{3,}\b', txt)
+        filtered = [w for w in words if w not in STOP_WORDS]
+        if len(filtered) < n:
+            return set()
+        return set(tuple(filtered[i:i+n]) for i in range(len(filtered) - n + 1))
+
+    def get_stats(t: str) -> set:
+        txt = html_to_text(t)
+        patterns = [
+            r'\b\d+(?:\.\d+)?%',
+            r'\$\d+(?:\.\d+)?[kM]?',
+            r'\b\d+x\b',
+            r'\b\d{4,}\b'
+        ]
+        stats = []
+        for p in patterns:
+            stats.extend(re.findall(p, txt, re.IGNORECASE))
+        return set(stats)
+
+    def get_entities(t: str) -> set:
+        txt = html_to_text(t)
+        words = re.findall(r'\b[A-Z][a-zA-Z0-9-]+\b', txt)
+        return set(words)
+
+    target_unigrams = get_ngrams(text, 1)
+    target_bigrams = get_ngrams(text, 2)
+    target_trigrams = get_ngrams(text, 3)
+    target_stats = get_stats(text)
+    target_entities = get_entities(text)
+    
+    ref_unigrams = set()
+    ref_bigrams = set()
+    ref_trigrams = set()
+    ref_stats = set()
+    ref_entities = set()
+    
+    for ref in reference_texts:
+        ref_unigrams.update(get_ngrams(ref, 1))
+        ref_bigrams.update(get_ngrams(ref, 2))
+        ref_trigrams.update(get_ngrams(ref, 3))
+        ref_stats.update(get_stats(ref))
+        ref_entities.update(get_entities(ref))
+        
+    unique_unigrams = target_unigrams - ref_unigrams
+    unique_bigrams = target_bigrams - ref_bigrams
+    unique_trigrams = target_trigrams - ref_trigrams
+    unique_stats = target_stats - ref_stats
+    unique_entities = target_entities - ref_entities
+    
+    unigram_ratio = len(unique_unigrams) / len(target_unigrams) if target_unigrams else 0.0
+    bigram_ratio = len(unique_bigrams) / len(target_bigrams) if target_bigrams else 0.0
+    trigram_ratio = len(unique_trigrams) / len(target_trigrams) if target_trigrams else 0.0
+    
+    ngram_uniqueness = (unigram_ratio * 0.2 + bigram_ratio * 0.4 + trigram_ratio * 0.4) * 100
+    
+    if target_stats:
+        stats_uniqueness = (len(unique_stats) / len(target_stats)) * 100
+    else:
+        stats_uniqueness = 0.0
+        
+    if target_entities:
+        entity_uniqueness = (len(unique_entities) / len(target_entities)) * 100
+    else:
+        entity_uniqueness = 0.0
+        
+    if not reference_texts:
+        words = max(1, word_count(text))
+        stat_density = min(100, (len(target_stats) / words) * 1000)
+        entity_density = min(100, (len(target_entities) / words) * 100)
+        ngram_richness = min(100, (len(target_trigrams) / words) * 200)
+        
+        overall = round(stat_density * 0.3 + entity_density * 0.3 + ngram_richness * 0.4)
+        return {
+            "overall": overall,
+            "details": {
+                "stat_density": round(stat_density, 2),
+                "entity_density": round(entity_density, 2),
+                "ngram_richness": round(ngram_richness, 2),
+                "is_baseline_comparison": False
+            }
+        }
+
+    weights = {"ngram": 0.5, "stats": 0.3, "entities": 0.2}
+    
+    if not target_stats:
+        weights["ngram"] += 0.2
+        weights["entities"] += 0.1
+        stats_uniqueness = 0.0
+        
+    if not target_entities:
+        weights["ngram"] += weights.get("entities", 0.0)
+        weights["entities"] = 0.0
+        
+    overall = round(
+        ngram_uniqueness * weights["ngram"] +
+        stats_uniqueness * (weights.get("stats", 0) if target_stats else 0) +
+        entity_uniqueness * weights["entities"]
+    )
+    
+    return {
+        "overall": min(100, max(0, overall)),
+        "details": {
+            "ngram_uniqueness": round(ngram_uniqueness, 2),
+            "stats_uniqueness": round(stats_uniqueness, 2),
+            "entity_uniqueness": round(entity_uniqueness, 2),
+            "unique_unigrams_count": len(unique_unigrams),
+            "unique_bigrams_count": len(unique_bigrams),
+            "unique_trigrams_count": len(unique_trigrams),
+            "unique_stats_count": len(unique_stats),
+            "unique_entities_count": len(unique_entities),
+            "is_baseline_comparison": True
+        }
+    }

@@ -105,7 +105,7 @@ def test_phase_3_ia_design():
 
 
 def test_phase_4_content_optimization():
-    """Phase 4: Content optimization uses real MasterCopywriter."""
+    """Phase 4: Content optimization uses real MasterCopywriter and SGE Optimizer."""
     from orchestrator import SEOGEOOrchestrator
 
     orch = SEOGEOOrchestrator()
@@ -120,7 +120,44 @@ def test_phase_4_content_optimization():
     assert "meta_description" in result
     assert "ai_tells_detected" in result
     assert "optimization_suggestions" in result
+    assert "information_gain" in result
+    assert "sge_summary_block" in result
     print(f"✅ Phase 4: Content Optimization — BLUF: '{result['bluf_paragraph'][:60]}...'")
+
+
+def test_phase_6_schema_generation():
+    """Phase 6: Schema generation uses SchemaEngineer with speakable schema."""
+    from orchestrator import SEOGEOOrchestrator
+
+    orch = SEOGEOOrchestrator()
+    # Mock preceding phase outputs that Phase 6 depends on
+    orch.results["phase_4"] = {
+        "bluf_paragraph": "This is a BLUF summary paragraph for testing speakable schema."
+    }
+    orch.results["phase_2"] = {
+        "paa_questions": [{"question": "What is test?", "snippet": "A test snippet."}],
+        "organic_results": []
+    }
+    orch.results["phase_3"] = {
+        "h2_questions": ["What is test?"]
+    }
+
+    result = asyncio.run(orch.execute_phase(6, {
+        "focus_keyword": "testing schema",
+        "target_url": "https://example.com",
+        "org_name": "Test Org"
+    }))
+
+    assert result["status"] == "completed"
+    assert result["phase"] == 6
+    assert "Article" in result["schema_types_generated"]
+    
+    # Check that Article schema has speakable property
+    article_schema = next(s["schema"] for s in result["schemas"] if s["type"] == "Article")
+    assert "speakable" in article_schema
+    assert article_schema["speakable"]["@type"] == "SpeakableSpecification"
+    assert article_schema["speakable"]["cssSelector"] == [".sge-definition", ".sge-takeaways"]
+    print("✅ Phase 6: Schema Generation with Speakable passed")
 
 
 def test_phase_8_competitive_analysis():
@@ -194,6 +231,7 @@ if __name__ == "__main__":
         test_phase_2_serp_analysis,
         test_phase_3_ia_design,
         test_phase_4_content_optimization,
+        test_phase_6_schema_generation,
         test_phase_8_competitive_analysis,
         test_phase_9_validation_gates,
         test_full_pipeline_execution,

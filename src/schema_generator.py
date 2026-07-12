@@ -66,6 +66,9 @@ class SchemaGenerator:
                 "@id": data["mainEntityOfPage"]
             }
 
+        if "speakable" in data:
+            schema["speakable"] = data["speakable"]
+
         return schema
 
     @staticmethod
@@ -596,3 +599,58 @@ class SchemaGenerator:
                 "prices_found": price_patterns
             }
         }
+
+    @staticmethod
+    def batch_generate_schemas(batch_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Optimized batch processing for generating schemas.
+        Takes a list of dictionaries where each dict has a 'schema_type' key
+        (e.g., 'Article', 'FAQPage', 'Product') and the 'data' to pass to the generator.
+        
+        Args:
+            batch_data: List of dicts, e.g., [{"schema_type": "Article", "data": {...}}]
+            
+        Returns:
+            List of generated schemas.
+        """
+        # Map of schema types to generator methods
+        generators = {
+            "Article": SchemaGenerator.generate_article_schema,
+            "BlogPosting": SchemaGenerator.generate_article_schema,
+            "FAQPage": SchemaGenerator.generate_faq_schema,
+            "HowTo": SchemaGenerator.generate_howto_schema,
+            "Review": SchemaGenerator.generate_review_schema,
+            "AggregateRating": SchemaGenerator.generate_review_schema,
+            "Product": SchemaGenerator.generate_product_schema,
+            "LocalBusiness": SchemaGenerator.generate_local_business_schema,
+            "Person": SchemaGenerator.generate_person_schema,
+            "Organization": SchemaGenerator.generate_organization_schema,
+            "BreadcrumbList": SchemaGenerator.generate_breadcrumb_schema,
+            "VideoObject": SchemaGenerator.generate_video_schema,
+            "ImageObject": SchemaGenerator.generate_image_schema,
+            "SpeakableSpecification": SchemaGenerator.generate_speakable_schema,
+            "Event": SchemaGenerator.generate_event_schema,
+            "Recipe": SchemaGenerator.generate_recipe_schema,
+        }
+        
+        results = []
+        for item in batch_data:
+            stype = item.get("schema_type")
+            data = item.get("data", {})
+            
+            generator = generators.get(stype)
+            if generator:
+                # FAQPage expects a list of questions, others expect dict
+                if stype == "FAQPage" and isinstance(data, list):
+                    results.append(generator(data))
+                elif stype == "BreadcrumbList" and isinstance(data, list):
+                    results.append(generator(data))
+                else:
+                    results.append(generator(data))
+            else:
+                # Fallback to generic if unsupported
+                fallback = SchemaGenerator._base_schema(stype)
+                fallback.update(data)
+                results.append(fallback)
+                
+        return results
