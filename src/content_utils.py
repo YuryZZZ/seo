@@ -333,3 +333,42 @@ def estimate_content_quality_score(text: str) -> Dict[str, Any]:
         }
     }
 
+def calculate_keyword_density(text: str, top_n: int = 10, stop_words: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Calculate keyword density/frequency (TF) for a given text.
+    
+    Args:
+        text: Plain text content
+        top_n: Number of top keywords to return
+        stop_words: Optional list of stop words to ignore
+        
+    Returns:
+        List of dicts containing keyword, count, and density percentage
+    """
+    if not text:
+        return []
+        
+    if stop_words is None:
+        stop_words = list(STOP_WORDS)
+        
+    # Lowercase and extract alphanumeric words
+    words = re.findall(r'\b[a-z0-9]+\b', text.lower())
+    
+    # Filter stop words and short words
+    filtered_words = [w for w in words if w not in stop_words and len(w) > 2]
+    total_filtered = len(filtered_words)
+    
+    if total_filtered == 0:
+        return []
+        
+    counts = Counter(filtered_words)
+    top_keywords = counts.most_common(top_n)
+    
+    results = []
+    for word, count in top_keywords:
+        results.append({
+            "keyword": word,
+            "count": count,
+            "density": round((count / total_filtered) * 100, 2)
+        })
+        
+    return results
