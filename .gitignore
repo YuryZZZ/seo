@@ -1,4 +1,4 @@
-﻿# PYTHON
+# PYTHON
 __pycache__/
 *.py[cod]
 *$py.class
@@ -71,6 +71,8 @@ logs/
 # AI artifacts
 .ai/artifacts/
 .ai/cache/
+.ai/backups/
+.ai/**/test_project/
 
 # Generated content
 generated_content/

@@ -157,28 +157,22 @@ class LLMClient:
         
         elif self.provider == "google":
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                return genai
+                from google import genai
+                client = genai.Client(api_key=self.api_key)
+                return client
             except ImportError:
-                logger.warning("google-generativeai package not found. Using MockGenAI.")
+                logger.warning("google-genai package not found. Using MockGenAI.")
                 class MockGenAI:
                     def __init__(self):
-                        class Types:
-                            def GenerationConfig(self, *args, **kwargs):
-                                return None
-                        self.types = Types()
-                    def configure(self, *args, **kwargs):
                         pass
-                    def GenerativeModel(self, model_name):
-                        class MockModel:
-                            def generate_content(self, *args, **kwargs):
-                                class MockResponse:
-                                    @property
-                                    def text(self):
-                                        return "Mocked response content"
-                                return MockResponse()
-                        return MockModel()
+                    def models(self):
+                        return self
+                    def generate_content(self, *args, **kwargs):
+                        class MockResponse:
+                            @property
+                            def text(self):
+                                return "Mocked response content"
+                        return MockResponse()
                 return MockGenAI()
         
         elif self.provider == "deepseek":
@@ -316,22 +310,22 @@ class LLMClient:
     
     def _generate_google(self, prompt: str, system_prompt: Optional[str],
                          max_tokens: int, temperature: float, **kwargs) -> str:
-        """Generate using Google Gemini API"""
-        model = self._client.GenerativeModel(self.model)
+        """Generate using Google Gemini API (google.genai SDK)"""
+        from google.genai import types
         
         full_prompt = prompt
         if system_prompt:
             full_prompt = f"{system_prompt}\n\n{prompt}"
         
-        generation_config = self._client.types.GenerationConfig(
+        config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
         )
         
-        response = model.generate_content(
-            full_prompt,
-            generation_config=generation_config,
-            **kwargs
+        response = self._client.models.generate_content(
+            model=self.model,
+            contents=full_prompt,
+            config=config,
         )
         
         return response.text
