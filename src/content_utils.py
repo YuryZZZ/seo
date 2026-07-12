@@ -3,7 +3,7 @@ import math
 import html
 import unicodedata
 from collections import Counter
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 
 # Basic stop words for English to aid in keyword extraction
 STOP_WORDS = {

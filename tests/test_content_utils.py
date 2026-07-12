@@ -14,6 +14,7 @@ from content_utils import (
     estimate_content_quality_score,
     count_questions,
     detect_language,
+    calculate_keyword_density,
 )
 
 
@@ -178,3 +179,19 @@ class TestDetectLanguage:
 
     def test_empty_string(self):
         assert detect_language("") == "en"
+
+class TestCalculateKeywordDensity:
+    """Test keyword density calculation."""
+    
+    def test_calculate_density(self):
+        text = "SEO is great for SEO and search optimization. Good SEO matters."
+        results = calculate_keyword_density(text)
+        
+        seo_item = next(item for item in results if item["keyword"] == "seo")
+        assert seo_item["count"] == 3
+        # total non-stopwords: seo, great, seo, search, optimization, good, seo, matters = 8
+        # density: 3/8 = 37.5%
+        assert seo_item["density"] == 37.5
+        
+    def test_empty_text(self):
+        assert calculate_keyword_density("") == []
