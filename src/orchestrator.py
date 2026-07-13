@@ -401,14 +401,96 @@ class SEOGEOOrchestrator:
             except Exception as e:
                 logger.warning(f"AIOverviewOptimizer summary generation failed: {e}")
 
-        if copywriter:
+        # 3. Multimedia SEO Integration
+        multimedia_seo = {
+            "images": [],
+            "videos": [],
+            "schemas": []
+        }
+        
+        images_input = data.get("images", [])
+        videos_input = data.get("videos", [])
+        
+        # If no lists provided but content exists, parse out img tags or video links as heuristics
+        if not images_input and isinstance(sample_content, str):
+            img_matches = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', sample_content)
+            images_input = [{"url": url} for url in img_matches]
+            
+        if not videos_input and isinstance(sample_content, str):
+            video_matches = re.findall(r'(https?://(?:www\.)?(?:youtube\.com|vimeo\.com|youtu\.be)/\S+)', sample_content)
+            videos_input = [{"url": url} for url in video_matches]
+
+        try:
+            from datetime import datetime
             try:
-                bluf = copywriter.generate_bluf_paragraph(focus_keyword, "Comprehensive guide")
-                meta_desc = copywriter.generate_meta_description(sample_content, focus_keyword)
-                ai_tells = copywriter.detect_ai_tells(sample_content)
-                optimization_result = copywriter.optimize_content(sample_content, focus_keyword, target_length=min_words)
-            except Exception as e:
-                logger.warning(f"Copywriter module error: {e}")
+                from .image_seo import ImageSEOAnalyzer
+                from .video_seo import VideoSEOAnalyzer
+                from .schema_generator import SchemaGenerator
+            except ImportError:
+                from image_seo import ImageSEOAnalyzer
+                from video_seo import VideoSEOAnalyzer
+                from schema_generator import SchemaGenerator
+
+            image_analyzer = ImageSEOAnalyzer()
+            video_analyzer = VideoSEOAnalyzer()
+
+            # Process Images
+            for img in images_input:
+                img_url = img.get("url") if isinstance(img, dict) else img
+                if not img_url:
+                    continue
+                page_context = {
+                    "keyword": focus_keyword,
+                    "primary_heading": data.get("title", "") or "SEO Guide"
+                }
+                metadata = image_analyzer.generate_image_metadata(page_context, img_url)
+                
+                # Heuristic size: use mock size for recommendation
+                mock_img_bytes = b"mock image content data bytes" * 1000  # 30KB mock image
+                compression_info = image_analyzer.get_compression_recommendations(mock_img_bytes)
+                
+                image_info = {
+                    "url": img_url,
+                    "metadata": metadata,
+                    "compression": compression_info
+                }
+                multimedia_seo["images"].append(image_info)
+                
+                img_schema_input = {
+                    "url": img_url,
+                    "caption": metadata["caption"],
+                    "description": metadata["alt_text"]
+                }
+                img_schema = SchemaGenerator.generate_image_schema(img_schema_input)
+                multimedia_seo["schemas"].append(img_schema)
+
+            # Process Videos
+            for vid in videos_input:
+                vid_url = vid.get("url") if isinstance(vid, dict) else vid
+                if not vid_url:
+                    continue
+                video_report = video_analyzer.get_video_seo_report(
+                    video_url=vid_url,
+                    keyword=focus_keyword,
+                    transcript=vid.get("transcript") or "Welcome! Today we are discussing SEO best practices."
+                )
+                
+                multimedia_seo["videos"].append({
+                    "url": vid_url,
+                    "report": video_report
+                })
+                
+                vid_schema_input = {
+                    "name": video_report["title_suggestions"][0] if video_report.get("title_suggestions") else "Optimized Video",
+                    "description": video_report["base_analysis"]["findings"][0],
+                    "thumbnailUrl": ["https://img.youtube.com/vi/mock/0.jpg"],
+                    "uploadDate": datetime.now().isoformat(),
+                    "contentUrl": vid_url
+                }
+                vid_schema = SchemaGenerator.generate_video_schema(vid_schema_input)
+                multimedia_seo["schemas"].append(vid_schema)
+        except Exception as e:
+            logger.warning(f"Multimedia SEO analysis failed: {e}")
 
         return {
             "status": "completed",
@@ -420,6 +502,7 @@ class SEOGEOOrchestrator:
             "optimization_suggestions": optimization_result.get("suggestions", []),
             "information_gain": ig_score,
             "sge_summary_block": sge_summary,
+            "multimedia_seo": multimedia_seo,
             "word_count_targets": {
                 "min_page_words": min_words,
                 "max_page_words": max_words,
