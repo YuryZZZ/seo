@@ -242,7 +242,8 @@ OUTPUT: Only the paragraph, no quotes or labels.
             return f"{topic} delivers measurable results when implemented correctly. This guide shows you exactly how to get started."
     
     def generate_content_block(self, h2: str, context: Dict[str, Any],
-                               keywords: List[str], word_count: int = 200) -> ContentBlock:
+                               keywords: List[str], word_count: int = 200,
+                               entities: Optional[List[str]] = None) -> ContentBlock:
         """
         Generate a content block for an H2 section.
         
@@ -251,17 +252,21 @@ OUTPUT: Only the paragraph, no quotes or labels.
             context: Research context
             keywords: Target keywords
             word_count: Target word count
+            entities: Optional LSI entities to guarantee inclusion
             
         Returns:
             ContentBlock object
         """
-        cache_key = f"content:block:{h2}:{','.join(sorted(keywords))}:{word_count}"
+        cache_key = f"content:block:{h2}:{','.join(sorted(keywords))}:{word_count}:{','.join(sorted(entities or []))}"
         cached = cache.get(cache_key)
         if cached is not None:
             logger.info(f"Content Block Cache HIT for h2: {h2}")
             return cached
 
         is_question = '?' in h2
+        entity_requirement = ""
+        if entities:
+            entity_requirement = f"\n8. You MUST naturally include at least 2-3 of these LSI entities: {', '.join(entities[:5])}"
         
         prompt = f"""Write content for the section: "{h2}"
 
@@ -272,7 +277,7 @@ REQUIREMENTS:
 4. Use 2-3 of these keywords naturally: {keywords[:5]}
 5. Include specific examples, data, or actionable advice
 6. Avoid AI-tell words: {', '.join(AI_TELL_WORDS)}
-7. Write in an engaging, human tone
+7. Write in an engaging, human tone{entity_requirement}
 
 ADDITIONAL CONTEXT:
 {json.dumps(context.get('content_gaps', [])[:3], indent=2)}

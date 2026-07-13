@@ -72,6 +72,35 @@ class SchemaGenerator:
         return schema
 
     @staticmethod
+    def generate_about_page_schema(entities: List[Dict[str, Any]], page_url: str, page_name: str) -> Dict[str, Any]:
+        """Generates AboutPage schema containing sameAs links for entities."""
+        schema = SchemaGenerator._base_schema("AboutPage")
+        schema["url"] = page_url
+        schema["name"] = page_name
+        
+        about_list = []
+        for ent in entities:
+            about_list.append({
+                "@type": ent.get("type", "Thing"),
+                "name": ent.get("name", ""),
+                "sameAs": ent.get("same_as", [])
+            })
+        schema["about"] = about_list
+        return schema
+
+    @staticmethod
+    def generate_mentions_schema(entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generates Mentions schema list (sameAs references) for entities."""
+        mentions = []
+        for ent in entities:
+            mentions.append({
+                "@type": ent.get("type", "Thing"),
+                "name": ent.get("name", ""),
+                "sameAs": ent.get("same_as", [])
+            })
+        return mentions
+
+    @staticmethod
     def generate_faq_schema(questions: List[Dict[str, str]]) -> Dict[str, Any]:
         """Generates FAQPage schema from a list of question/answer dicts."""
         schema = SchemaGenerator._base_schema("FAQPage")

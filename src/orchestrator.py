@@ -493,6 +493,50 @@ class SEOGEOOrchestrator:
         except Exception as e:
             logger.warning(f"Multimedia SEO analysis failed: {e}")
 
+        # 4. Entity Extraction & Schema Generation
+        extracted_entities = []
+        wikidata_mapping = {}
+        entity_graph = {}
+        about_schema = None
+        mentions_schema = []
+
+        entity_extractor = self.agents.get("entity_extractor")
+        if entity_extractor:
+            try:
+                raw_ents = entity_extractor.extract_entities(sample_content)
+                extracted_entities = [ent["text"] for ent in raw_ents]
+                wikidata_mapping = entity_extractor.map_entities_to_wikidata(extracted_entities)
+                entity_graph = entity_extractor.build_entity_graph(extracted_entities)
+                
+                # Format entities for schema sameAs linking
+                schema_entities = []
+                for name in extracted_entities[:5]:  # Limit to top 5 entities for schema cleanliness
+                    same_as = []
+                    qid = wikidata_mapping.get(name)
+                    if qid:
+                        same_as.append(f"https://www.wikidata.org/wiki/{qid}")
+                    
+                    schema_entities.append({
+                        "type": "Thing",
+                        "name": name,
+                        "same_as": same_as
+                    })
+                
+                try:
+                    from .schema_generator import SchemaGenerator
+                except ImportError:
+                    from schema_generator import SchemaGenerator
+                    
+                about_schema = SchemaGenerator.generate_about_page_schema(
+                    entities=schema_entities,
+                    page_url=data.get("target_url", "https://example.com"),
+                    page_name=data.get("title", "SEO Article")
+                )
+                
+                mentions_schema = SchemaGenerator.generate_mentions_schema(schema_entities)
+            except Exception as e:
+                logger.warning(f"Entity extraction / schema generation failed in Phase 4: {e}")
+
         return {
             "status": "completed",
             "phase": 4,
@@ -504,6 +548,11 @@ class SEOGEOOrchestrator:
             "information_gain": ig_score,
             "sge_summary_block": sge_summary,
             "multimedia_seo": multimedia_seo,
+            "entities": extracted_entities,
+            "wikidata_mapping": wikidata_mapping,
+            "entity_graph": entity_graph,
+            "about_page_schema": about_schema,
+            "mentions_schema": mentions_schema,
             "word_count_targets": {
                 "min_page_words": min_words,
                 "max_page_words": max_words,
