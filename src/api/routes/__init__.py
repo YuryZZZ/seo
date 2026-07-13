@@ -5,8 +5,9 @@ from .agents import router as agents_router
 from .framework import router as framework_router
 from .pseo import router as pseo_router
 from .analytics import router as analytics_router
+from .ab_testing import router as ab_testing_router
 
-__all__ = ["health_router", "jobs_router", "agents_router", "framework_router", "pseo_router", "analytics_router", "include_routers"]
+__all__ = ["health_router", "jobs_router", "agents_router", "framework_router", "pseo_router", "analytics_router", "ab_testing_router", "include_routers"]
 
 
 def include_routers(app: FastAPI):
@@ -17,3 +18,4 @@ def include_routers(app: FastAPI):
     app.include_router(framework_router)
     app.include_router(pseo_router)
     app.include_router(analytics_router)
+    app.include_router(ab_testing_router)
