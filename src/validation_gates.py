@@ -245,11 +245,35 @@ class GateRegistry:
         """Verify author Experience, Expertise, Authoritativeness, Trust signals."""
         author = data.get("author", {})
         content = data.get("content", "")
+        results = data.get("results", {})
 
-        # Check for author schema/byline
+        # Check for author schema/byline from direct data
         has_author_name = bool(author.get("name", ""))
         has_author_bio = bool(author.get("bio", author.get("description", "")))
         has_author_url = bool(author.get("url", author.get("sameAs", "")))
+
+        # Also check Phase 6 schemas for author signals
+        p6 = results.get("phase_6", {})
+        for schema_item in p6.get("schemas", []):
+            schema = schema_item.get("schema", {}) if isinstance(schema_item, dict) else {}
+            schema_author = schema.get("author", {})
+            if isinstance(schema_author, dict):
+                if schema_author.get("name"):
+                    has_author_name = True
+                if schema_author.get("url"):
+                    has_author_url = True
+            elif isinstance(schema_author, str) and schema_author:
+                has_author_name = True
+
+        # Check for Organization schema (trust signal)
+        has_org_schema = any(
+            s.get("type") == "Organization"
+            for s in p6.get("schemas", []) if isinstance(s, dict)
+        )
+
+        # Check Phase 5 geo-targeting for local trust signals
+        p5 = results.get("phase_5", {})
+        has_local_schema = bool(p5.get("local_business_schema"))
 
         # Check content for E-E-A-T signals
         eeat_signals = []
@@ -261,6 +285,12 @@ class GateRegistry:
                 eeat_signals.append("citation_present")
             if any(w in content_lower for w in ["certified", "licensed", "credential", "qualification"]):
                 eeat_signals.append("credential_mention")
+
+        # Org/Local schemas count as trust signals
+        if has_org_schema:
+            eeat_signals.append("organization_schema")
+        if has_local_schema:
+            eeat_signals.append("local_business_schema")
 
         if not has_author_name and not eeat_signals:
             return GateResult(passed=False, message="No author or E-E-A-T signals found", details={"has_author": False, "eeat_signals": []})

@@ -66,9 +66,11 @@ async def main():
 
     from src.prompts.dynamic_prompt_engine import DynamicPromptEngine, TopicContext
     from src.master_copywriter import MasterCopywriter
+    from src.llm_client import LLMClient
 
     engine = DynamicPromptEngine()
-    copywriter = MasterCopywriter(config=api_keys)
+    llm_client = LLMClient(provider="google", model="gemini-2.5-flash")
+    copywriter = MasterCopywriter(config=api_keys, llm_client=llm_client)
 
     # We will waterfall generate section by section
     final_article = f"# {initial_data['target_keywords'][0]}\n\n"

@@ -186,13 +186,13 @@ def test_repository_scan_inventory_uses_cached_terms_on_repeat_calls(tmp_path: P
     researcher = KeywordResearcher(repo_root=tmp_path)
     first = researcher.build_costs_contracts_framework(
         base_url="https://example.com",
-        max_repository_terms=20,
+        max_repository_terms=21,
         target_keyword_count=300,
         target_topic_count=12,
     )
     second = researcher.build_costs_contracts_framework(
         base_url="https://example.com",
-        max_repository_terms=20,
+        max_repository_terms=21,
         target_keyword_count=300,
         target_topic_count=12,
     )

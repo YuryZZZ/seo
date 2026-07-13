@@ -129,7 +129,7 @@
 | GoogleTrendsClient | `src/google_integration/trends_client.py` | 🔄 NEEDED | OAuth |
 | GoogleSheetsClient | `src/google_integration/sheets_client.py` | 🔄 NEEDED | Service account |
 | GSC Client | - | ❌ MISSING | OAuth2 |
-| SEMrush Client | - | ❌ MISSING | API key |
+| Google Analytics Client | - | ❌ MISSING | OAuth2 |
 | Ahrefs Client | - | ❌ MISSING | API key |
 | YouTube Client | - | ❌ MISSING | API key |
 
@@ -295,7 +295,7 @@ pytest-cov>=4.1.0
 3. ~~**Missing modules**~~ - RESOLVED: All 6 modules exist and are wired (2026-03-26)
 4. **Validation gate rules** - 12 gates registered but rules are stubs (always pass)
 5. **Numbered automators** - 200 files exist but return placeholder values
-6. **Missing API clients** - GSC, SEMrush, Ahrefs (contract stubs only)
+6. **Missing API clients** - GSC, Google Analytics, Ahrefs (contract stubs only)
 
 ---
 
@@ -308,7 +308,7 @@ pytest-cov>=4.1.0
 5. Flesh out top 20 numbered automators with field-specific logic
 6. Clean up root directory
 7. Fix README.md
-8. Wire GSC + SEMrush API clients
+8. Wire Google API stack (GSC + Custom Search + Trends)
 9. Production pipeline run against live domain
 
 ---

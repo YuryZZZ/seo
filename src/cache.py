@@ -58,6 +58,63 @@ class MemoryCache(CacheBackend):
         logger.info(f"Cache cleared: {count} items")
 
 
+class RedisCache(CacheBackend):
+    """Redis cache backend with hit/miss tracking and JSON serialization."""
+    def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0, password: Optional[str] = None):
+        try:
+            import redis
+        except ImportError:
+            raise ImportError("redis package is required for RedisCache. Install with 'pip install redis'")
+            
+        self._redis = redis.Redis(host=host, port=port, db=db, password=password, decode_responses=True)
+        self._hits = 0
+        self._misses = 0
+
+    def _serialize(self, value: Any) -> str:
+        """Serialize complex objects to JSON."""
+        return json.dumps(value)
+
+    def _deserialize(self, value: str) -> Any:
+        """Deserialize JSON strings to objects."""
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return value
+
+    def get(self, key: str) -> Optional[Any]:
+        try:
+            value = self._redis.get(key)
+            if value is None:
+                self._misses += 1
+                return None
+            self._hits += 1
+            return self._deserialize(value)
+        except Exception as e:
+            logger.error(f"Redis get error: {e}")
+            self._misses += 1
+            return None
+
+    def set(self, key: str, value: Any, ttl: int = 3600) -> None:
+        try:
+            serialized_value = self._serialize(value)
+            self._redis.setex(key, ttl, serialized_value)
+        except Exception as e:
+            logger.error(f"Redis set error: {e}")
+
+    def delete(self, key: str) -> bool:
+        try:
+            return bool(self._redis.delete(key))
+        except Exception as e:
+            logger.error(f"Redis delete error: {e}")
+            return False
+
+    def clear(self) -> None:
+        try:
+            self._redis.flushdb()
+            logger.info("Redis cache cleared")
+        except Exception as e:
+            logger.error(f"Redis clear error: {e}")
+
 class CacheManager:
     """High-level cache manager."""
     def __init__(self, backend: Optional[CacheBackend] = None):
@@ -81,15 +138,16 @@ class CacheManager:
     def stats(self) -> Dict[str, Any]:
         """Return cache statistics for monitoring."""
         result = {"backend": type(self.backend).__name__}
-        if isinstance(self.backend, MemoryCache):
+        if isinstance(self.backend, MemoryCache) or isinstance(self.backend, RedisCache):
             result.update({
-                "entries": len(self.backend._cache),
                 "hits": self.backend._hits,
                 "misses": self.backend._misses,
                 "hit_rate": round(
                     self.backend._hits / max(1, self.backend._hits + self.backend._misses), 3
                 ),
             })
+            if isinstance(self.backend, MemoryCache):
+                result["entries"] = len(self.backend._cache)
         return result
     
     def _make_key(self, key: str) -> str:
@@ -176,4 +234,4 @@ class LRUCache:
         return key in self.cache
 
 
-__all__ = ['CacheBackend', 'MemoryCache', 'CacheManager', 'cache', 'LRUCache']
+__all__ = ['CacheBackend', 'MemoryCache', 'RedisCache', 'CacheManager', 'cache', 'LRUCache']

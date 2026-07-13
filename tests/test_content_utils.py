@@ -15,6 +15,7 @@ from content_utils import (
     count_questions,
     detect_language,
     calculate_keyword_density,
+    estimate_information_gain_score,
 )
 
 
@@ -195,3 +196,36 @@ class TestCalculateKeywordDensity:
         
     def test_empty_text(self):
         assert calculate_keyword_density("") == []
+
+class TestEstimateInformationGain:
+    """Test information gain estimation."""
+    
+    def test_empty_text(self):
+        result = estimate_information_gain_score("", [])
+        assert result["overall"] == 0
+        
+    def test_no_references_intrinsic_scoring(self):
+        text = "This is a great text with statistics like 15% and $100k, and entities like Google and OpenAI."
+        result = estimate_information_gain_score(text, [])
+        assert "overall" in result
+        assert result["details"]["is_baseline_comparison"] is False
+        assert result["details"]["stat_density"] > 0
+        assert result["details"]["entity_density"] > 0
+        
+    def test_high_uniqueness_against_references(self):
+        text = "We discovered a brand new formula where 99% of user engagement spikes by 10x using proprietary algorithm X."
+        references = [
+            "This is a standard guide about search engine optimization.",
+            "Traditional methods suggest writing longer blog posts to rank better."
+        ]
+        result = estimate_information_gain_score(text, references)
+        assert result["overall"] > 70
+        assert result["details"]["is_baseline_comparison"] is True
+        assert result["details"]["unique_stats_count"] > 0
+        
+    def test_low_uniqueness_against_exact_duplicate(self):
+        text = "This is identical content to the reference text."
+        references = ["This is identical content to the reference text."]
+        result = estimate_information_gain_score(text, references)
+        assert result["overall"] == 0
+        assert result["details"]["ngram_uniqueness"] == 0.0
