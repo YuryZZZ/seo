@@ -6,6 +6,7 @@ Part of SEO/GEO Framework - 10-agent orchestration system.
 """
 
 import asyncio
+import re
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import logging
