@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from src.api.routes import router as api_router
+from src.api.routes import include_routers
 from src.middleware_security import SecurityHeadersMiddleware, RateLimitingMiddleware
 
 # Configure logging
@@ -111,7 +111,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Include API routes
-app.include_router(api_router, prefix="/api/v1")
+include_routers(app)
 
 
 @app.get("/")

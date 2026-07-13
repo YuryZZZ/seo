@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: seo-framework-web
+  namespace: default
+  labels:
+    app: seo-framework
+    component: web
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: seo-framework
+    component: web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seo-framework-db
+  namespace: default
+  labels:
+    app: seo-framework
+    component: db
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app: seo-framework
+    component: db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seo-framework-redis
+  namespace: default
+  labels:
+    app: seo-framework
+    component: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: seo-framework
+    component: redis

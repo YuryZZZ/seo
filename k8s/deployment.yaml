@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seo-framework-web
+  namespace: default
+  labels:
+    app: seo-framework
+    component: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: seo-framework
+      component: web
+  template:
+    metadata:
+      labels:
+        app: seo-framework
+        component: web
+    spec:
+      containers:
+      - name: web
+        image: YuryZZZ/seo:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+        env:
+        - name: POSTGRES_DB
+          value: "seo_db"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_HOST
+          value: "seo-framework-db"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: REDIS_URL
+          value: "redis://seo-framework-redis:6379/0"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/metrics  # health check endpoint
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/metrics
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seo-framework-db
+  namespace: default
+  labels:
+    app: seo-framework
+    component: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seo-framework
+      component: db
+  template:
+    metadata:
+      labels:
+        app: seo-framework
+        component: db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "seo_db"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - name: db-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: db-storage
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seo-framework-redis
+  namespace: default
+  labels:
+    app: seo-framework
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seo-framework
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: seo-framework
+        component: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          limits:
+            cpu: 250m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
