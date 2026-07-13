@@ -93,6 +93,14 @@ class InternalLinker:
         opportunities: List[LinkOpportunity] = []
         seen_urls: set = set()
         
+        try:
+            from .ml.vector_search import VectorSearchEngine
+        except ImportError:
+            from ml.vector_search import VectorSearchEngine
+        import numpy as np
+
+        engine = VectorSearchEngine()
+
         for article in all_articles:
             target_url = str(article.get("url", ""))
             target_title = str(article.get("title", ""))
@@ -103,18 +111,30 @@ class InternalLinker:
             
             keywords = [str(k).lower() for k in article.get("keywords", [])]
             
-            # Calculate relevance score
+            # Calculate relevance score (TF-IDF/heuristic basis)
             score, best_anchor = self._calculate_relevance(
                 current_lower, keywords, target_title.lower()
             )
             
-            if score >= self.min_relevance_score:
+            # Calculate vector score (semantic basis)
+            vector_score = 0.0
+            try:
+                target_text = f"{target_title} " + " ".join(keywords)
+                embeddings = engine.generate_embeddings([current_content, target_text])
+                vector_score = float(np.dot(embeddings[0], embeddings[1]))
+            except Exception as e:
+                logger.warning(f"Vector similarity computation failed: {e}")
+
+            # Hybrid score (50% keyword matching, 50% semantic vector matching)
+            hybrid_score = 0.5 * score + 0.5 * max(0.0, vector_score)
+
+            if hybrid_score >= self.min_relevance_score:
                 opportunities.append(LinkOpportunity(
                     source_url=current_url,
                     target_url=target_url,
                     target_title=target_title,
                     anchor_text=best_anchor or target_title,
-                    relevance_score=score,
+                    relevance_score=hybrid_score,
                 ))
                 seen_urls.add(target_url)
         
